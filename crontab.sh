@@ -1,1 +1,2 @@
-*/5 * * * * /usr/bin/python3 /path/to/your/python/script.py
+*/5 * * * * /usr/bin/python3 /home/ubuntu/Projetc_PGL/scrape_data.py >> /home/ubuntu/Projetc_PGL/log.txt 2>&1
+
