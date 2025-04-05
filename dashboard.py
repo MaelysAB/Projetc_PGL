@@ -7,7 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import datetime
 import numpy as np
 
-app = dash.Dash(_name_)
+app = dash.Dash(__name__)
 app.title = "Pi Network Dashboard"
 
 # Load data from CSV
