@@ -96,4 +96,4 @@ def update_dashboard(_):
         daily_report_str = "No data available for today."
 
     return fig, latest_price, daily_report_str
-app.run(debug=True)
+app.run(debug=True, host='0.0.0.0', port=8050)

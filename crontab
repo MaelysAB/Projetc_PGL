@@ -1,0 +1,2 @@
+*/5 * * * * /home/ubuntu/Projetc_PGL/scrapped_data.sh >> /home/ubuntu/Projetc_PGL/cron.log 2>&1
+
