@@ -8,63 +8,51 @@ import datetime
 import numpy as np
 
 app = dash.Dash(__name__)
-app.title = "Pi Network Dashboard"
+app.title = "Pi dashboard"
 
-# Load data from CSV
+#We are loading the price of pi
 def get_data():
-    df = pd.read_csv("pi_network_prices.csv", names=["Timestamp", "Price", "Date"])
-    df["Timestamp"] = pd.to_datetime(df["Timestamp"])
-    df["Date"] = pd.to_datetime(df["Date"])
+    df = pd.read_csv("pi_network_prices.csv", names=["timestamp", "price", "date"])
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df["date"] = pd.to_datetime(df["date"])
     return df
 
+#We are creating a daily report
 def get_daily_report(df):
-    # Group data by date
-    df['Date'] = df['Timestamp'].dt.date
-    daily_data = df.groupby('Date').agg(
-        open_price=('Price', 'first'),  # First entry in the day for open price
-        close_price=('Price', 'last'),  # Last entry in the day for close price
-        volatility=('Price', lambda x: np.std(x)),  # Standard deviation for daily volatility
-        evolution=('Price', lambda x: (x.iloc[-1] - x.iloc[0]) / x.iloc[0] * 100)  # Evolution in percentage
+    df['date'] = df['timestamp'].dt.date
+    daily_data = df.groupby('date').agg(
+        open_price=('price', 'first'),
+        close_price=('price', 'last'),
+        volatility=('price', lambda x: np.std(x)),
+        evolution=('price', lambda x: (x.iloc[-1] - x.iloc[0]) / x.iloc[0] * 100)
     ).reset_index()
-
-    # Get today's report (or most recent)
     today = pd.to_datetime("today").date()
-    today_report = daily_data[daily_data['Date'] == today]
-
-    if not today_report.empty:
-        return today_report.iloc[0]
-    return None
+    today_report = daily_data[daily_data['date'] == today]
+    return today_report.iloc[0]
 
 
-# Define function to update the report at 8 PM
-def update_report_at_8pm():
-    if datetime.datetime.now().hour == 20:  # 8 PM
-        print("Updating daily report")
-        # Call the function to update the report here
+#We make sure the daily report is updated at 8 
+def update_report_at_8():
+    if datetime.datetime.now().hour == 20:
         df = get_data()
         today_report = get_daily_report(df)
-        if today_report is not None:
-            print(f"Today's Report (Date: {today_report['Date']}):\n"
-                  f"Open Price: ${today_report['open_price']:.2f}\n"
-                  f"Close Price: ${today_report['close_price']:.2f}\n"
-                  f"Daily Volatility: ${today_report['volatility']:.2f}\n"
-                  f"Price Evolution: {today_report['evolution']:.2f}%")
-        else:
-            print("No data available for today.")
+        today_report.to_csv("daily_report.csv", index=False)
+        print("The daily report is uploaded")
 
-# Setup the scheduler
+# We need a scheduler to schedule the uptdate
 scheduler = BackgroundScheduler()
-scheduler.add_job(update_report_at_8pm, 'interval', hours=1)
+scheduler.add_job(update_report_at_8, 'interval', hours=1)
 scheduler.start()
 
+#this helps updatre the dashboard every 5 min
 app.layout = html.Div([
-    html.H1("Pi Network Dashboard"),
+    html.H1("Pi dashboard"),
     dcc.Graph(id='price-chart'),
     html.Div(id="latest-price"),
     html.Div(id="daily-report"),
     dcc.Interval(
         id='interval-component',
-        interval=5 * 60 * 1000,  # 5 minutes in milliseconds
+        interval=5 * 60 * 1000,  # 5 minutes
         n_intervals=0
     )
 ])
@@ -77,23 +65,19 @@ app.layout = html.Div([
 )
 def update_dashboard(_):
     df = get_data()
-    
-    # Get the latest price data
-    fig = px.line(df, x="Timestamp", y="Price", title="Pi Price Over Time")
-    latest_price = f"Latest Price: ${df.iloc[-1]['Price']}"
-    
-    # Get the daily report
-    daily_report = get_daily_report(df)
-    if daily_report is not None:
+    fig = px.line(df, x="timestamp", y="price", title="Pi price over time")
+    latest_price = f"Latest price: ${df.iloc[-1]['price']:.2f}"
+    try:
+        daily_report = pd.read_csv("daily_report.csv")
         daily_report_str = (
-            f"Today's Report (Date: {daily_report['Date']}):\n"
-            f"Open Price: ${daily_report['open_price']:.2f}\n"
-            f"Close Price: ${daily_report['close_price']:.2f}\n"
-            f"Daily Volatility: ${daily_report['volatility']:.2f}\n"
-            f"Price Evolution: {daily_report['evolution']:.2f}%"
+            f"today report (Date: {daily_report.iloc[0]['date']}):\n"
+            f"open price: ${daily_report.iloc[0]['open_price']:.2f}\n"
+            f"close price: ${daily_report.iloc[0]['close_price']:.2f}\n"
+            f"daily volatility: ${daily_report.iloc[0]['volatility']:.2f}\n"
+            f"price evolution: {daily_report.iloc[0]['evolution']:.2f}%"
         )
-    else:
-        daily_report_str = "No data available for today."
-
+    except Exception:
+        daily_report_str = "It is not 8pm yet so we cannot update the report yet"
     return fig, latest_price, daily_report_str
+
 app.run(debug=True, host='0.0.0.0', port=8050)
